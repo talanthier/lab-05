@@ -1,0 +1,26 @@
+---
+title: "Lab 5"
+author: "Tim Lanthier"
+date: "2/16/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(stringr)
+library(knitr)
+library(skimr)
+library(broom)
+```
+
+## Lab 5: Data Wrangling & Regression
+The data we will be working with is Airbnb listings. The data can be obtained through the following link:
+
+[http://insideairbnb.com/get-the-data.html](http://insideairbnb.com/get-the-data.html)
+
+For this lab we will only be using the listings data from Santa Cruz, CA.
+
+
+
+
