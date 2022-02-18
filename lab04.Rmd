@@ -12,6 +12,7 @@ library(stringr)
 library(knitr)
 library(skimr)
 library(broom)
+library(cowplot)
 ```
 
 ## Lab 5: Data Wrangling & Regression
@@ -80,3 +81,83 @@ ggplot(airbnb, aes(minimum_nights)) +
   labs(x = 'Minimum Nights', title = 'Distribution of Minimum Nights for Filtered Dataset')
 ```
 We will use this dataset for the remainder of the lab.
+
+### Regression
+
+We will start by defining a new variable `price_3_nights` which is the price to stay at each location for 3 nights.
+```{r}
+airbnb <- airbnb %>%
+  mutate(price_3_nights = 3*price+cleaning_fee)
+```
+
+Now we will create a linear regression model for price_3_nights.
+```{r}
+model1 <- lm(price_3_nights ~ neigh_simp + number_of_reviews + reviews_per_month, data = airbnb)
+tidy(model1, conf.int = TRUE) %>%
+  kable(digits = 3, format = 'markdown')
+```
+For `number_of_reviews`, we have a coefficient of -0.437 and a confidence interval of (-0.832, -0.040). This means that holding all else constant, if the number of reviews for a listing were to increase by 1, we would expect the price of the listing for 3 nights to decrease by \$0.437. As for the confidence interval, this means we are 95\% confident that the true value for the coefficient of `number_of_reviews` lies within the interval (-0.832, -0.040).
+
+For `neigh_simpCity of Santa Cruz`, we have a coefficient of -208.001 and a confidence interval of(-356.966, -59.036). This means that keeping all other characteristics of the listing the same, we would expect that the listing that is in the City of Santa Cruz would have a 3 day price of \$208.001 less than the same listing which is located in the City of Capitola. According to the confidence interval, we are 95\% confident that this coefficient representing the difference in 3 day price for the same listings between the City of Santa Cruz and Capitola woud lie between -\$356.966 and -\$59.036.
+
+Interpreting the intercept, we would say that with a listing which is in the City of Capitola which has 0 reviews and 0 reviews per month, we would expect that the listing would have a 3 night price of \$1475.38. Seeing that it is possible that a listing has these characteristics, this interpretation makes sense in the context of this problem. It is essentially stating what we should expect to pay for a listing if we have no review information.
+
+Now suppose we find an Airbnb which has 5.14 reviews per month, 10 total reviews, and is in the Scotts Valley. 
+```{r}
+new_obs <- data.frame(neigh_simp = 'Scotts Valley/Watsonville', number_of_reviews = 10, reviews_per_month = 5.14)
+predict(model1, new_obs, interval = 'prediction')
+```
+Using our model, we would predict that we would pay \$361.68 for a 3 night stay at this listing. We also have a confidence interval of (-1121.781, 1845.156). We would say that we are 95\% confident that the price of an Airbnb listing in Scotts Valley with 5.14 reviews per month and 10 total reviews is between -\$1121.78 and \$1845.16. Seeing as 3 day prices cannot be negative, the interpretation of this confidence interval doesn't make sense.
+
+
+### Checking Assumptions
+Now we will check the assumptions for our model. We will start by looking at the linearity and constant variance assumptions.
+
+```{r}
+airbnb_model1 <- augment(model1)
+glimpse(airbnb_model1)
+```
+```{r}
+ggplot(data = airbnb_model1, aes(x = .fitted, y=.resid)) +
+  geom_point() +
+  geom_hline(yintercept=0, color = 'red') +
+  labs(x = 'Predictions', y = 'Residuals', title = 'Model Predictions vs Residuals')
+```
+Looking at the plot of our predictions against the residuals, it looks like there is a pattern. With very low predictions, we tend to have positive residuals. Meanwhile with larger predictions most of the residuals lie below 0.
+
+```{r}
+p1 <- ggplot(data = airbnb_model1, aes(x = neigh_simp, y=.resid)) +
+  geom_point() +
+  geom_hline(yintercept=0, color = 'red') +
+  labs(x = 'Neighborhood', y ='Residuals')+
+  coord_flip()
+
+p2 <- ggplot(data = airbnb_model1, aes(x = number_of_reviews, y=.resid)) +
+  geom_point() +
+  geom_hline(yintercept=0, color = 'red') +
+  labs(x = 'Number of Reviews', y = 'Residuals')
+
+p3 <- ggplot(data = airbnb_model1, aes(x = reviews_per_month, y=.resid)) +
+  geom_point() +
+  geom_hline(yintercept=0, color = 'red') +
+  labs(x = 'Reviews per Month', y = 'Residuals')
+
+plot_grid(p1,p2,p3)
+```
+Once again, we can see a pattern between reviews per month as well as number of reviews and the residuals. Since there is a clear pattern between the residuals and some of the predictor variables as well as the predictions, we would claim that the linearity assumptions is not satisfied and a linear regression model is not optimal for modeling the relationship between these variables.
+
+Looking at the plot of our model's residuals against its predictions, we see that with lower predicted values, we have a very tight spread for the residuals, but for larger predictions we have a much larger spread. Seeing as the spread around the horizontal line at 0 is not constant for different values for our prediction, the constant variance assumption has been violated.
+
+Now we will evaluate whether the normality assumption has been satisfied.
+
+```{r}
+ggplot(data = airbnb_model1, aes(.resid)) +
+  geom_histogram(bins = 40) + 
+  labs(x='Residuals')
+
+qqnorm(airbnb_model1$.resid)
+qqline(airbnb_model1$.resid, col = 'red')
+```
+Looking at the histogram for the residuals, we see that the distribution of the residuals is positively skewed shown by the long right tail. Also, the mode of the distribution appears to be below 0. Also, the normal QQ-plot does not follow a straight diagonal line. While within the theoretical quantiles of about -1 to 1, the residuals seem to be follow the normal distribution quite closely, outside this range the qqplot deviates quite a bit from the diagonal line shown. So in the tails our data does not follow the normal distribution at all. Hence the normality assumption is not satisfied.
+
+Next we will check the independence assumption.
