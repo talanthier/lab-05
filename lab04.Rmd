@@ -2,7 +2,9 @@
 title: "Lab 5"
 author: "Tim Lanthier"
 date: "2/16/2022"
-output: pdf_document
+output:
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -14,6 +16,8 @@ library(skimr)
 library(broom)
 library(cowplot)
 ```
+
+Github Repository: [https://github.com/talanthier/lab-05](https://github.com/talanthier/lab-05)
 
 ## Lab 5: Data Wrangling & Regression
 The data we will be working with is Airbnb listings. The data can be obtained through the following link:
@@ -161,3 +165,14 @@ qqline(airbnb_model1$.resid, col = 'red')
 Looking at the histogram for the residuals, we see that the distribution of the residuals is positively skewed shown by the long right tail. Also, the mode of the distribution appears to be below 0. Also, the normal QQ-plot does not follow a straight diagonal line. While within the theoretical quantiles of about -1 to 1, the residuals seem to be follow the normal distribution quite closely, outside this range the qqplot deviates quite a bit from the diagonal line shown. So in the tails our data does not follow the normal distribution at all. Hence the normality assumption is not satisfied.
 
 Next we will check the independence assumption.
+```{r}
+ggplot(airbnb_model1, aes(x = as.integer(.rownames), y=.resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = 'red') +
+  labs(x = 'Row Number', y = 'Residuals')
+```
+Above we have a plot of the residuals in the order which the data was put into the dataframe. It looks like we have a random scatter around 0, so assuming that the data was put into the dataset in the same order in which it was collected, we don't have any evidence that observations are dependent. So we would claim that the independence assumption has been satisfied since we have no evidence to say otherwise.
+
+Since not all assumptions are satisfied, we cannot conduct inference on the results of our model.
+
+
